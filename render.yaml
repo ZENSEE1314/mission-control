@@ -1,0 +1,35 @@
+services:
+
+  - type: web
+    name: ruflo-mission-control
+    runtime: node
+    plan: starter
+    region: singapore
+    branch: main
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: "10000"
+      - key: NODE_ENV
+        value: production
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: OPENCLAW_VERSION
+        value: "2026.3.22"
+
+  - type: cron
+    name: ruflo-openclaw-updater
+    runtime: node
+    plan: starter
+    schedule: "0 2 * * *"
+    buildCommand: npm install
+    startCommand: node openclaw-updater.js
+    envVars:
+      - key: OPENCLAW_VERSION
+        value: "2026.3.22"
