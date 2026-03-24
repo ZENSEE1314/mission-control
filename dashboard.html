@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>🌊 Ruflo Mission Control</title>
+<style>
+:root{--bg:#090e1a;--panel:#0d1526;--border:#1b2d4f;--accent:#00d4ff;--accent2:#7c3aed;--green:#10b981;--yellow:#f59e0b;--red:#ef4444;--text:#e2e8f0;--muted:#64748b;--card:#111827;--sidebar:#0a1220;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+
+/* TOP BAR */
+header{background:linear-gradient(90deg,#0a1628,#0f1e3a);border-bottom:1px solid var(--border);padding:0 16px;height:52px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.logo{display:flex;align-items:center;gap:10px;font-size:20px;font-weight:700;}
+.logo em{color:var(--accent);font-style:normal;}
+.logo .ver{font-size:10px;background:var(--accent2);color:#fff;padding:2px 7px;border-radius:99px;}
+.header-right{display:flex;align-items:center;gap:12px;font-size:12px;color:var(--muted);}
+#clock{font-family:monospace;color:var(--accent);}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--red);transition:background .3s;}
+.dot.live{background:var(--green);box-shadow:0 0 6px var(--green);}
+
+/* TABS */
+nav{background:var(--sidebar);border-bottom:1px solid var(--border);display:flex;flex-shrink:0;overflow-x:auto;}
+nav button{background:none;border:none;color:var(--muted);padding:10px 18px;font-size:12px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:all .15s;}
+nav button:hover{color:var(--text);}
+nav button.active{color:var(--accent);border-bottom-color:var(--accent);}
+
+/* TAB PAGES */
+.page{display:none;flex:1;overflow:hidden;}
+.page.active{display:flex;}
+
+/* ══ COMMAND CENTER ══ */
+.cc-grid{display:grid;grid-template-columns:240px 1fr 260px;grid-template-rows:1fr 200px;gap:1px;background:var(--border);width:100%;flex:1;overflow:hidden;}
+.panel{background:var(--panel);display:flex;flex-direction:column;overflow:hidden;}
+.ph{padding:9px 13px;border-bottom:1px solid var(--border);font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--accent);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.pb{flex:1;overflow-y:auto;padding:8px;}
+.pb::-webkit-scrollbar{width:3px;}
+.pb::-webkit-scrollbar-thumb{background:var(--border);}
+
+/* Agent cards */
+.agent-card{background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px;cursor:default;transition:border-color .2s;}
+.agent-card:hover{border-color:var(--accent);}
+.ai{font-size:18px;}
+.ainfo{flex:1;min-width:0;}
+.aname{font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.atype{font-size:10px;color:var(--muted);}
+.abadge{font-size:9px;font-weight:700;padding:1px 6px;border-radius:99px;text-transform:uppercase;}
+.ba{background:#052e16;color:var(--green);}
+.bi{background:#1c1917;color:var(--muted);}
+.bb{background:#2d1b0e;color:var(--yellow);}
+
+/* Task cards */
+.task-card{background:var(--card);border:1px solid var(--border);border-radius:6px;padding:9px 11px;margin-bottom:7px;transition:border-color .2s;}
+.task-card:hover{border-color:var(--accent2);}
+.task-top{display:flex;align-items:center;gap:6px;margin-bottom:4px;}
+.tid{font-size:9px;font-family:monospace;color:var(--muted);background:#1e293b;padding:1px 5px;border-radius:3px;}
+.tdesc{font-size:11px;font-weight:500;flex:1;}
+.ts-badge{font-size:9px;font-weight:700;padding:1px 6px;border-radius:99px;text-transform:uppercase;}
+.tsp{background:#1c1917;color:#a16207;}
+.tsr{background:#0f2233;color:var(--accent);}
+.tsc{background:#052e16;color:var(--green);}
+.tsf{background:#2d0808;color:var(--red);}
+.tmeta{font-size:10px;color:var(--muted);display:flex;gap:8px;margin-top:3px;}
+
+/* Log */
+#log-out{font-family:'Cascadia Code',monospace;font-size:11px;padding:8px;overflow-y:auto;flex:1;line-height:1.6;}
+.ll{padding:1px 0;}
+.lts{color:var(--muted);font-size:9px;margin-right:5px;}
+.li{color:var(--text);}
+.ls{color:var(--green);}
+.lw{color:var(--yellow);}
+.le{color:var(--red);}
+.lc{color:var(--accent);}
+
+/* CMD bar */
+.cmd-bar{background:#0a1220;border-top:1px solid var(--border);padding:9px 14px;display:flex;gap:8px;align-items:center;flex-shrink:0;}
+.cmd-bar select,.cmd-bar input{background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:7px 10px;font-size:12px;outline:none;font-family:inherit;}
+.cmd-bar input{flex:1;}
+.cmd-bar input:focus,.cmd-bar select:focus{border-color:var(--accent);}
+.btn-d{background:linear-gradient(135deg,#0088cc,#00d4ff);color:#000;font-weight:700;font-size:12px;border:none;border-radius:6px;padding:7px 18px;cursor:pointer;}
+.btn-d:hover{opacity:.85;}
+.btn-d:disabled{opacity:.4;cursor:not-allowed;}
+.btn-s{background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:7px 11px;cursor:pointer;font-size:13px;}
+.btn-s:hover{border-color:var(--accent);color:var(--accent);}
+
+/* Memory */
+.mem-e{background:var(--card);border-left:3px solid var(--accent2);padding:6px 9px;margin-bottom:5px;border-radius:0 4px 4px 0;font-size:11px;}
+.mk{font-weight:600;color:var(--accent);font-family:monospace;}
+.mv{color:var(--muted);margin-top:2px;word-break:break-word;}
+
+/* Folders */
+.fd{font-size:10px;font-weight:700;color:var(--accent);padding:4px 0 2px;}
+.ft{background:var(--card);border:1px solid var(--border);border-radius:4px;padding:5px 7px;margin-bottom:4px;font-size:10px;cursor:pointer;}
+.ft:hover{border-color:var(--accent2);color:var(--accent);}
+
+/* ══ BOTS PAGE ══ */
+.bots-page{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.bots-toolbar{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:center;flex-shrink:0;}
+.bots-grid{flex:1;overflow-y:auto;padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;align-content:start;}
+.bot-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px;position:relative;transition:border-color .2s;}
+.bot-card:hover{border-color:var(--accent);}
+.bot-icon{font-size:28px;margin-bottom:8px;}
+.bot-name{font-size:13px;font-weight:700;margin-bottom:2px;}
+.bot-type{font-size:10px;color:var(--muted);margin-bottom:8px;}
+.bot-status{position:absolute;top:12px;right:12px;}
+.bot-actions{display:flex;gap:6px;margin-top:10px;}
+.btn-sm{font-size:10px;padding:3px 10px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer;}
+.btn-sm:hover{background:var(--border);}
+.btn-sm.danger:hover{border-color:var(--red);color:var(--red);}
+.btn-sm.primary{background:var(--accent);color:#000;border-color:var(--accent);}
+
+/* AI Studio panel */
+.ai-studio{background:var(--panel);border-left:1px solid var(--border);width:380px;display:flex;flex-direction:column;flex-shrink:0;}
+.ai-studio .pb{padding:14px;}
+.ai-studio textarea{width:100%;background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:9px;font-family:inherit;font-size:12px;resize:vertical;outline:none;min-height:80px;}
+.ai-studio textarea:focus{border-color:var(--accent);}
+.md-preview{background:#0a0f1a;border:1px solid var(--border);border-radius:6px;padding:10px;font-size:11px;font-family:monospace;white-space:pre-wrap;overflow-y:auto;max-height:300px;color:#a0c4ff;margin-top:8px;}
+
+/* ══ SKILL STORE ══ */
+.store-page{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.store-toolbar{padding:10px 16px;border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:center;flex-shrink:0;}
+.store-toolbar input{flex:1;background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:7px 11px;font-size:12px;outline:none;}
+.store-toolbar input:focus{border-color:var(--accent);}
+.store-body{flex:1;overflow-y:auto;padding:14px;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;align-content:start;}
+.skill-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:13px;transition:border-color .2s;}
+.skill-card:hover{border-color:var(--accent2);}
+.skill-name{font-size:12px;font-weight:700;margin-bottom:4px;}
+.skill-desc{font-size:11px;color:var(--muted);line-height:1.4;margin-bottom:8px;}
+.skill-tags{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;}
+.tag{font-size:9px;padding:1px 6px;border-radius:99px;background:#1e293b;color:var(--muted);}
+.skill-meta{font-size:10px;color:var(--muted);display:flex;justify-content:space-between;margin-bottom:8px;}
+.skill-actions{display:flex;gap:5px;}
+.installed-badge{font-size:9px;background:#052e16;color:var(--green);padding:2px 7px;border-radius:99px;}
+.upload-zone{background:var(--card);border:2px dashed var(--border);border-radius:8px;padding:24px;text-align:center;color:var(--muted);font-size:12px;cursor:pointer;transition:border-color .2s;}
+.upload-zone:hover{border-color:var(--accent);}
+
+/* ══ CALENDAR ══ */
+.cal-page{flex:1;display:flex;gap:1px;background:var(--border);overflow:hidden;}
+.cal-main{flex:1;display:flex;flex-direction:column;background:var(--panel);overflow:hidden;}
+.cal-header{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-shrink:0;}
+.cal-nav{background:none;border:1px solid var(--border);color:var(--text);border-radius:4px;padding:4px 10px;cursor:pointer;font-size:13px;}
+.cal-nav:hover{border-color:var(--accent);}
+.cal-title{font-size:16px;font-weight:700;color:var(--accent);}
+.cal-grid{flex:1;overflow-y:auto;padding:8px;}
+.cal-weekdays{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px;}
+.cal-weekday{text-align:center;font-size:10px;font-weight:700;color:var(--muted);padding:4px;}
+.cal-days{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;}
+.cal-day{background:var(--card);border:1px solid var(--border);border-radius:4px;padding:5px;min-height:70px;cursor:pointer;transition:border-color .2s;}
+.cal-day:hover{border-color:var(--accent);}
+.cal-day.today{border-color:var(--accent);background:#0d1f35;}
+.cal-day.other-month{opacity:.4;}
+.cal-day-num{font-size:11px;font-weight:600;margin-bottom:3px;}
+.cal-event{font-size:9px;padding:1px 4px;border-radius:2px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ce-completed{background:#052e16;color:var(--green);}
+.ce-scheduled{background:#0f2233;color:var(--accent);}
+.ce-failed{background:#2d0808;color:var(--red);}
+.cal-side{width:240px;background:var(--panel);display:flex;flex-direction:column;overflow:hidden;}
+.cal-event-list{flex:1;overflow-y:auto;padding:10px;}
+.cal-event-item{background:var(--card);border:1px solid var(--border);border-radius:5px;padding:8px;margin-bottom:6px;}
+.cal-event-title{font-size:11px;font-weight:600;margin-bottom:2px;}
+.cal-event-date{font-size:10px;color:var(--muted);}
+
+/* ══ SETTINGS ══ */
+.settings-page{flex:1;overflow-y:auto;padding:20px 28px;background:var(--bg);}
+.settings-section{background:var(--panel);border:1px solid var(--border);border-radius:8px;margin-bottom:16px;overflow:hidden;}
+.ss-header{padding:12px 16px;border-bottom:1px solid var(--border);font-size:13px;font-weight:700;color:var(--accent);display:flex;align-items:center;gap:8px;}
+.ss-body{padding:16px;}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
+.form-group{display:flex;flex-direction:column;gap:4px;}
+.form-group label{font-size:11px;color:var(--muted);font-weight:600;}
+.form-group input,.form-group select{background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:8px 10px;font-size:12px;outline:none;}
+.form-group input:focus,.form-group select:focus{border-color:var(--accent);}
+.form-group input[type="password"]{letter-spacing:2px;}
+.save-btn{background:var(--accent);color:#000;font-weight:700;border:none;border-radius:6px;padding:9px 22px;cursor:pointer;font-size:13px;margin-top:4px;}
+.save-btn:hover{opacity:.85;}
+.claw-status{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.claw-ver{font-size:12px;color:var(--muted);}
+.toggle{width:36px;height:20px;background:var(--border);border-radius:99px;position:relative;cursor:pointer;transition:background .2s;}
+.toggle.on{background:var(--accent);}
+.toggle::after{content:'';position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:#fff;transition:transform .2s;}
+.toggle.on::after{transform:translateX(16px);}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:100;opacity:0;pointer-events:none;transition:opacity .2s;}
+.modal-overlay.open{opacity:1;pointer-events:all;}
+.modal{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:22px;width:420px;box-shadow:0 20px 60px rgba(0,0,0,.5);max-height:90vh;overflow-y:auto;}
+.modal h3{font-size:14px;margin-bottom:14px;color:var(--accent);}
+.modal label{font-size:11px;color:var(--muted);display:block;margin-bottom:4px;}
+.modal input,.modal select,.modal textarea{width:100%;background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:7px 10px;font-size:12px;outline:none;margin-bottom:10px;}
+.modal input:focus,.modal select:focus,.modal textarea:focus{border-color:var(--accent);}
+.modal-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:4px;}
+.btn-p{background:var(--accent);color:#000;font-weight:700;border:none;border-radius:6px;padding:7px 16px;cursor:pointer;}
+.btn-c{background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:6px;padding:7px 16px;cursor:pointer;}
+
+.empty{color:var(--muted);font-size:11px;text-align:center;padding:24px;}
+*{scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<header>
+  <div class="logo">🌊 <em>Ruflo</em>&nbsp;Mission Control <span class="ver">v2</span></div>
+  <div class="header-right">
+    <span id="clock">--:--:--</span>
+    <span style="display:flex;align-items:center;gap:5px"><span class="dot" id="dot"></span><span id="conn-txt">Connecting…</span></span>
+    <button class="btn-s" onclick="refreshAll()" style="font-size:11px">⟳ Refresh</button>
+  </div>
+</header>
+
+<!-- TABS -->
+<nav>
+  <button class="active" onclick="showTab('cc',this)">🎛 Command Center</button>
+  <button onclick="showTab('bots',this)">🤖 Bot Manager</button>
+  <button onclick="showTab('store',this)">📦 Skill Store</button>
+  <button onclick="showTab('cal',this)">📅 Calendar</button>
+  <button onclick="showTab('settings',this)">⚙️ Settings</button>
+</nav>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- TAB 1: COMMAND CENTER -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="page active" id="tab-cc" style="flex-direction:column">
+  <div class="cc-grid">
+    <!-- Agents -->
+    <div class="panel" style="grid-row:1;grid-column:1">
+      <div class="ph"><span>⚡ Agents</span><span id="agt-cnt" style="color:var(--muted);font-weight:400">—</span></div>
+      <div class="pb" id="agents-list"><div class="empty">Loading…</div></div>
+    </div>
+    <!-- Tasks -->
+    <div class="panel" style="grid-row:1;grid-column:2">
+      <div class="ph"><span>📋 Tasks</span><span id="task-cnt" style="color:var(--muted);font-weight:400">—</span></div>
+      <div class="pb" id="tasks-list"><div class="empty">Loading…</div></div>
+    </div>
+    <!-- Memory -->
+    <div class="panel" style="grid-row:1;grid-column:3">
+      <div class="ph"><span>🧠 Memory</span>
+        <select id="mem-ns" onchange="loadMemory()" style="background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:1px 5px;font-size:10px">
+          <option value="">all</option><option value="patterns">patterns</option><option value="results">results</option>
+        </select>
+      </div>
+      <div class="pb" id="memory-list"><div class="empty">Loading…</div></div>
+    </div>
+    <!-- Log -->
+    <div class="panel" style="grid-row:2;grid-column:1/span 2">
+      <div class="ph"><span>📡 Activity Log</span><button onclick="clearLog()" style="background:none;border:none;color:var(--muted);font-size:10px;cursor:pointer">Clear</button></div>
+      <div id="log-out"></div>
+    </div>
+    <!-- Folders -->
+    <div class="panel" style="grid-row:2;grid-column:3">
+      <div class="ph"><span>📁 Outputs</span><button onclick="loadFolders()" style="background:none;border:none;color:var(--muted);font-size:11px;cursor:pointer">⟳</button></div>
+      <div class="pb" id="folders-list"><div class="empty">None yet.</div></div>
+    </div>
+  </div>
+  <!-- CMD BAR -->
+  <div class="cmd-bar">
+    <select id="topology-sel"><option value="hierarchical">Hierarchical</option><option value="mesh">Mesh</option><option value="ring">Ring</option><option value="star">Star</option></select>
+    <input id="cmd-in" type="text" placeholder="Describe a task or objective for your swarm… (Enter to dispatch)" onkeydown="if(event.key==='Enter')dispatch()" autocomplete="off"/>
+    <button class="btn-d" onclick="dispatch()" id="dispatch-btn">🚀 Dispatch</button>
+    <button class="btn-s" onclick="stopSwarm()" style="color:var(--red);border-color:var(--red)" title="Stop swarm">■ Stop</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- TAB 2: BOT MANAGER -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="page" id="tab-bots">
+  <div class="bots-page">
+    <div class="bots-toolbar">
+      <button class="btn-d" onclick="openSpawnModal()">＋ Spawn Agent</button>
+      <button class="btn-s" onclick="openCreateBotModal()">✨ Create from Prompt</button>
+      <button class="btn-s" onclick="loadBots()">⟳ Refresh</button>
+      <span id="bot-count" style="font-size:12px;color:var(--muted);margin-left:auto"></span>
+    </div>
+    <div class="bots-grid" id="bots-grid"><div class="empty" style="grid-column:1/-1">No agents running. Spawn one or dispatch a task.</div></div>
+  </div>
+  <!-- AI Studio sidebar -->
+  <div class="ai-studio">
+    <div class="ph">✨ AI Studio</div>
+    <div class="pb" style="padding:14px;display:flex;flex-direction:column;gap:8px">
+      <label style="font-size:11px;color:var(--muted)">Short prompt → generates agent/skill markdown</label>
+      <select id="md-type" style="background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:5px;padding:6px;font-size:12px">
+        <option value="agent">Agent Config</option>
+        <option value="skill">Skill Definition</option>
+        <option value="workflow">Workflow</option>
+        <option value="readme">README</option>
+      </select>
+      <textarea id="md-prompt" placeholder="e.g. An agent that monitors Twitter for AI trends and summarises them daily"></textarea>
+      <button class="btn-d" onclick="generateMD()">⚡ Generate</button>
+      <div id="md-preview" class="md-preview" style="display:none"></div>
+      <div id="md-actions" style="display:none;display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn-sm" onclick="copyMD()">📋 Copy</button>
+        <button class="btn-sm primary" onclick="saveAsSkill()">💾 Save as Skill</button>
+        <button class="btn-sm" onclick="spawnFromMD()">⚡ Spawn Agent</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- TAB 3: SKILL STORE -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="page" id="tab-store" style="flex-direction:column">
+  <div class="store-page">
+    <div class="store-toolbar">
+      <span style="font-size:12px;font-weight:700;color:var(--accent)">📦 Skill Store</span>
+      <input id="skill-search" type="text" placeholder="Search skills…" oninput="filterSkills()" style="max-width:240px"/>
+      <select id="skill-tab" onchange="switchSkillTab()" style="background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:7px 10px;font-size:12px">
+        <option value="store">🛒 Store</option>
+        <option value="installed">✅ Installed</option>
+      </select>
+      <button class="btn-s" onclick="openUploadSkillModal()">⬆ Upload Skill</button>
+      <button class="btn-s" onclick="loadSkillStore()">⟳</button>
+    </div>
+    <div class="store-body" id="skill-grid"><div class="empty" style="grid-column:1/-1">Loading skills…</div></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- TAB 4: CALENDAR -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="page" id="tab-cal">
+  <div class="cal-page">
+    <div class="cal-main">
+      <div class="cal-header">
+        <button class="cal-nav" onclick="prevMonth()">◀</button>
+        <span class="cal-title" id="cal-title">Loading…</span>
+        <button class="cal-nav" onclick="nextMonth()">▶</button>
+        <button class="btn-d" onclick="openAddEventModal()" style="margin-left:auto;font-size:11px;padding:5px 14px">＋ Add Event</button>
+      </div>
+      <div class="cal-grid">
+        <div class="cal-weekdays" id="cal-weekdays">
+          <div class="cal-weekday">Sun</div><div class="cal-weekday">Mon</div><div class="cal-weekday">Tue</div>
+          <div class="cal-weekday">Wed</div><div class="cal-weekday">Thu</div><div class="cal-weekday">Fri</div><div class="cal-weekday">Sat</div>
+        </div>
+        <div class="cal-days" id="cal-days"></div>
+      </div>
+    </div>
+    <div class="cal-side">
+      <div class="ph"><span>📌 Events</span></div>
+      <div class="cal-event-list" id="cal-event-list"><div class="empty">No events.</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- TAB 5: SETTINGS -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="page" id="tab-settings" style="overflow-y:auto">
+  <div class="settings-page">
+
+    <!-- API Keys -->
+    <div class="settings-section">
+      <div class="ss-header">🔑 API Keys</div>
+      <div class="ss-body">
+        <div class="form-row">
+          <div class="form-group"><label>Anthropic API Key</label><input type="password" id="s-anthropic" placeholder="sk-ant-…"/></div>
+          <div class="form-group"><label>OpenAI API Key</label><input type="password" id="s-openai" placeholder="sk-…"/></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>GitHub Token</label><input type="password" id="s-github" placeholder="ghp_…"/></div>
+          <div class="form-group"><label>OpenRouter API Key</label><input type="password" id="s-openrouter" placeholder="sk-or-…"/></div>
+        </div>
+        <button class="save-btn" onclick="saveApiKeys()">Save API Keys</button>
+      </div>
+    </div>
+
+    <!-- Social Platforms -->
+    <div class="settings-section">
+      <div class="ss-header">📱 Social Platforms</div>
+      <div class="ss-body">
+        <div style="margin-bottom:14px">
+          <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px">Discord</div>
+          <div class="form-row">
+            <div class="form-group"><label>Webhook URL</label><input type="text" id="s-discord-wh" placeholder="https://discord.com/api/webhooks/…"/></div>
+            <div class="form-group"><label>Bot Token</label><input type="password" id="s-discord-bt" placeholder="Bot token…"/></div>
+          </div>
+        </div>
+        <div style="margin-bottom:14px">
+          <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px">Twitter / X</div>
+          <div class="form-row">
+            <div class="form-group"><label>API Key</label><input type="password" id="s-tw-key" placeholder="API key…"/></div>
+            <div class="form-group"><label>Bearer Token</label><input type="password" id="s-tw-bearer" placeholder="Bearer token…"/></div>
+          </div>
+        </div>
+        <div style="margin-bottom:14px">
+          <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px">Slack</div>
+          <div class="form-row">
+            <div class="form-group"><label>Webhook URL</label><input type="text" id="s-slack-wh" placeholder="https://hooks.slack.com/services/…"/></div>
+            <div class="form-group"><label>Channel</label><input type="text" id="s-slack-ch" placeholder="#general"/></div>
+          </div>
+        </div>
+        <button class="save-btn" onclick="saveSocial()">Save Social Settings</button>
+      </div>
+    </div>
+
+    <!-- OpenClaw -->
+    <div class="settings-section">
+      <div class="ss-header">🦞 OpenClaw</div>
+      <div class="ss-body">
+        <div class="claw-status">
+          <span class="dot" id="claw-dot"></span>
+          <span class="claw-ver" id="claw-ver">Checking…</span>
+          <span style="margin-left:auto;display:flex;gap:8px">
+            <button class="btn-sm" onclick="installClaw()">⬇ Install / Update</button>
+            <button class="btn-sm" onclick="checkClaw()">⟳ Check</button>
+          </span>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Target Version</label><input type="text" id="s-claw-ver" placeholder="2026.3.22"/></div>
+          <div class="form-group"><label>Auto-update</label>
+            <div style="margin-top:8px"><div class="toggle on" id="claw-toggle" onclick="this.classList.toggle('on')"></div></div>
+          </div>
+        </div>
+        <button class="save-btn" onclick="saveClawSettings()">Save OpenClaw Settings</button>
+      </div>
+    </div>
+
+    <!-- General -->
+    <div class="settings-section">
+      <div class="ss-header">⚙️ General</div>
+      <div class="ss-body">
+        <div class="form-row">
+          <div class="form-group"><label>Timezone</label>
+            <select id="s-tz">
+              <option value="Asia/Kuala_Lumpur">Asia/Kuala_Lumpur (MYT)</option>
+              <option value="UTC">UTC</option>
+              <option value="America/New_York">America/New_York (EST)</option>
+              <option value="Europe/London">Europe/London (GMT)</option>
+              <option value="Asia/Singapore">Asia/Singapore (SGT)</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Server Port</label><input type="number" id="s-port" value="3847"/></div>
+        </div>
+        <button class="save-btn" onclick="saveGeneral()">Save General Settings</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══ MODALS ══ -->
+<div class="modal-overlay" id="spawn-modal">
+  <div class="modal">
+    <h3>⚡ Spawn Agent</h3>
+    <label>Type</label>
+    <select id="spawn-type">
+      <option value="coordinator">coordinator</option><option value="coder" selected>coder</option>
+      <option value="tester">tester</option><option value="reviewer">reviewer</option>
+      <option value="architect">architect</option><option value="researcher">researcher</option>
+      <option value="security-architect">security-architect</option>
+    </select>
+    <label>Name (optional)</label><input id="spawn-name" placeholder="auto-generated if blank"/>
+    <div class="modal-btns"><button class="btn-c" onclick="closeMod('spawn-modal')">Cancel</button><button class="btn-p" onclick="spawnAgent()">Spawn</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="create-bot-modal">
+  <div class="modal">
+    <h3>✨ Create Bot from Prompt</h3>
+    <label>Short Prompt</label>
+    <textarea id="cb-prompt" rows="3" placeholder="e.g. A researcher that tracks AI news daily and posts to Discord"></textarea>
+    <label>Agent Type</label>
+    <select id="cb-type">
+      <option value="researcher">researcher</option><option value="coder">coder</option>
+      <option value="coordinator">coordinator</option><option value="reviewer">reviewer</option>
+    </select>
+    <label>Agent Name</label><input id="cb-name" placeholder="my-custom-agent"/>
+    <div id="cb-md-preview" style="display:none" class="md-preview"></div>
+    <div class="modal-btns">
+      <button class="btn-c" onclick="closeMod('create-bot-modal')">Cancel</button>
+      <button class="btn-c" onclick="previewBot()">Preview MD</button>
+      <button class="btn-p" onclick="createBot()">Create Bot</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="upload-skill-modal">
+  <div class="modal">
+    <h3>⬆ Upload Skill</h3>
+    <label>Skill Name</label><input id="us-name" placeholder="my-custom-skill"/>
+    <label>Skill Content (Markdown)</label>
+    <textarea id="us-content" rows="8" placeholder="# My Skill&#10;&#10;## Description&#10;..."></textarea>
+    <div class="modal-btns">
+      <button class="btn-c" onclick="closeMod('upload-skill-modal')">Cancel</button>
+      <button class="btn-p" onclick="uploadSkill()">Upload</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="add-event-modal">
+  <div class="modal">
+    <h3>📅 Add Calendar Event</h3>
+    <label>Title</label><input id="ev-title" placeholder="Event title…"/>
+    <label>Date</label><input id="ev-date" type="date"/>
+    <label>Time</label><input id="ev-time" type="time"/>
+    <label>Type</label>
+    <select id="ev-type"><option value="scheduled">Scheduled</option><option value="completed">Completed</option><option value="reminder">Reminder</option></select>
+    <div class="modal-btns"><button class="btn-c" onclick="closeMod('add-event-modal')">Cancel</button><button class="btn-p" onclick="addEvent()">Add</button></div>
+  </div>
+</div>
+
+<script>
+const API='http://localhost:3847/api', WS_URL='ws://localhost:3847';
+let ws,calYear=new Date().getFullYear(),calMonth=new Date().getMonth(),calEvents=[],allSkills=[],generatedMD='';
+
+// ── WS ────────────────────────────────────────────────────
+function connectWS(){
+  ws=new WebSocket(WS_URL);
+  ws.onopen=()=>setConn(true);
+  ws.onclose=()=>{setConn(false);setTimeout(connectWS,3000);};
+  ws.onerror=()=>setConn(false);
+  ws.onmessage=e=>{
+    const d=JSON.parse(e.data);
+    const msg=d.message||d.output||d.objective||JSON.stringify(d);
+    const icons={task_created:'✅',agent_spawned:'⚡',agent_stopped:'🔴',swarm_init:'🌊',swarm_stopped:'■',dispatch_complete:'🚀',skill_installed:'📦',skill_uploaded:'⬆',openclaw_installed:'🦞',log:'▸',connected:'🟢'};
+    appendLog(`${icons[d.type]||'•'} [${d.type}] ${msg}`);
+    if(['task_created','task_cancelled'].includes(d.type))loadTasks();
+    if(['agent_spawned','agent_stopped'].includes(d.type)){loadAgents();loadBots();}
+    if(d.type==='dispatch_complete'){loadFolders();loadTasks();loadAgents();loadBots();loadCalendar();}
+  };
+}
+function setConn(live){
+  document.getElementById('dot').className='dot'+(live?' live':'');
+  document.getElementById('conn-txt').textContent=live?'Live':'Offline';
+}
+
+// ── TAB NAV ───────────────────────────────────────────────
+function showTab(id,btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  btn.classList.add('active');
+  if(id==='bots')loadBots();
+  if(id==='store')loadSkillStore();
+  if(id==='cal')loadCalendar();
+  if(id==='settings')loadSettings();
+}
+
+// ── CLOCK ──────────────────────────────────────────────────
+setInterval(()=>document.getElementById('clock').textContent=new Date().toLocaleTimeString(),1000);
+
+// ── LOG ───────────────────────────────────────────────────
+function appendLog(msg,cls='li'){
+  const el=document.getElementById('log-out');
+  const d=document.createElement('div');
+  d.className=`ll ${cls}`;
+  d.innerHTML=`<span class="lts">${new Date().toLocaleTimeString()}</span>${esc(msg)}`;
+  el.appendChild(d);el.scrollTop=el.scrollHeight;
+}
+function clearLog(){document.getElementById('log-out').innerHTML='';}
+
+// ── API ───────────────────────────────────────────────────
+async function api(path,opts={}){
+  try{const r=await fetch(API+path,{headers:{'Content-Type':'application/json'},...opts,body:opts.body?JSON.stringify(opts.body):undefined});return r.json();}
+  catch(e){appendLog('API error '+path+': '+e.message,'le');return{ok:false,error:e.message};}
+}
+
+// ── AGENTS (cc) ───────────────────────────────────────────
+const ICONS={coordinator:'🧭',coder:'💻',tester:'🧪',reviewer:'🔍',architect:'🏗',researcher:'🔬','security-architect':'🛡',default:'🤖'};
+
+async function loadAgents(){
+  const d=await api('/agents'),el=document.getElementById('agents-list');
+  if(!d.ok||!d.raw){el.innerHTML='<div class="empty">No agents running.</div>';document.getElementById('agt-cnt').textContent='0';return;}
+  const lines=d.raw.split('\n').filter(l=>l.trim()&&!l.startsWith('─')&&!l.startsWith('Name'));
+  const agents=lines.map(l=>{const p=l.trim().split(/\s{2,}/);return{name:p[0],type:p[1]||'agent',status:p[2]||'idle',id:p[3]||p[0]};}).filter(a=>a.name&&a.name!=='Name');
+  document.getElementById('agt-cnt').textContent=agents.length;
+  el.innerHTML=agents.length?agents.map(a=>`
+    <div class="agent-card">
+      <span class="ai">${ICONS[a.type]||'🤖'}</span>
+      <div class="ainfo"><div class="aname">${esc(a.name)}</div><div class="atype">${esc(a.type)}</div></div>
+      <div style="display:flex;flex-direction:column;gap:3px;align-items:flex-end">
+        <span class="abadge ${a.status.includes('active')?'ba':a.status.includes('busy')?'bb':'bi'}">${esc(a.status)}</span>
+        <button class="btn-sm danger" onclick="stopAgent('${esc(a.id)}')">✕ stop</button>
+      </div>
+    </div>`).join(''):'<div class="empty">No agents running.</div>';
+}
+
+async function stopAgent(id){appendLog('Stopping '+id,'lw');await api('/agents/'+id,{method:'DELETE'});loadAgents();loadBots();}
+
+// ── TASKS ─────────────────────────────────────────────────
+async function loadTasks(){
+  const d=await api('/tasks'),el=document.getElementById('tasks-list');
+  if(!d.ok||!d.raw){el.innerHTML='<div class="empty">No tasks yet.</div>';document.getElementById('task-cnt').textContent='0';return;}
+  const lines=d.raw.split('\n').filter(l=>l.trim()&&!l.startsWith('─')&&!l.startsWith('ID'));
+  const tasks=lines.map(l=>{const p=l.trim().split(/\s{2,}/);return{id:p[0]||'?',type:p[1]||'task',desc:p[2]||l.trim(),status:p[3]||'pending'};}).filter(t=>t.id&&t.id!=='ID');
+  document.getElementById('task-cnt').textContent=tasks.length;
+  const stcls={pending:'tsp',running:'tsr',completed:'tsc',failed:'tsf'};
+  el.innerHTML=tasks.length?tasks.map(t=>`
+    <div class="task-card">
+      <div class="task-top">
+        <span class="tid">${esc(t.id.slice(0,8))}</span>
+        <span class="tdesc">${esc(t.desc)}</span>
+        <span class="ts-badge ${stcls[t.status]||'tsp'}">${esc(t.status)}</span>
+      </div>
+      <div class="tmeta"><span>${esc(t.type)}</span>
+        <span style="margin-left:auto;display:flex;gap:4px">
+          <button class="btn-sm" onclick="cancelTask('${esc(t.id)}')">✕</button>
+        </span>
+      </div>
+    </div>`).join(''):'<div class="empty">No tasks yet.</div>';
+}
+
+async function cancelTask(id){if(!confirm('Cancel task '+id+'?'))return;await api('/tasks/'+id,{method:'DELETE'});loadTasks();}
+
+// ── MEMORY ────────────────────────────────────────────────
+async function loadMemory(){
+  const ns=document.getElementById('mem-ns').value;
+  const d=await api('/memory'+(ns?'?namespace='+ns:''));
+  const el=document.getElementById('memory-list');
+  if(!d.ok||!d.raw){el.innerHTML='<div class="empty">Empty.</div>';return;}
+  const lines=d.raw.split('\n').filter(l=>l.trim());
+  el.innerHTML=lines.map(l=>{const[k,...rest]=l.split(':');return`<div class="mem-e"><div class="mk">${esc(k?.trim()||l)}</div><div class="mv">${esc(rest.join(':').trim().slice(0,100))}</div></div>`;}).join('')||'<div class="empty">No entries.</div>';
+}
+
+// ── FOLDERS ───────────────────────────────────────────────
+async function loadFolders(){
+  const d=await api('/folders'),el=document.getElementById('folders-list');
+  if(!d.dates||!d.dates.length){el.innerHTML='<div class="empty">No outputs yet.</div>';return;}
+  el.innerHTML=d.dates.map(({date,tasks})=>`
+    <div class="fd">📅 ${date}</div>
+    ${tasks.map(t=>`<div class="ft" title="${esc(t.objective||t.name)}"><div style="font-weight:600">${esc(t.name.slice(0,28))}</div><div style="color:var(--muted)">${esc(t.objective.slice(0,50)||t.files.join(', '))}</div></div>`).join('')}`).join('');
+}
+
+// ── DISPATCH ──────────────────────────────────────────────
+async function dispatch(){
+  const input=document.getElementById('cmd-in'),obj=input.value.trim();
+  if(!obj)return;
+  const btn=document.getElementById('dispatch-btn');btn.disabled=true;btn.textContent='⏳…';
+  input.value='';appendLog('🚀 Dispatching: "'+obj+'"','lc');
+  const d=await api('/dispatch',{method:'POST',body:{objective:obj,topology:document.getElementById('topology-sel').value}});
+  appendLog(d.ok?'✅ Done! Saved to: '+d.folder:'❌ '+d.error,d.ok?'ls':'le');
+  btn.disabled=false;btn.textContent='🚀 Dispatch';
+  setTimeout(refreshAll,1000);
+}
+
+async function stopSwarm(){
+  if(!confirm('Stop all agents?'))return;
+  appendLog('■ Stopping swarm…','lw');
+  await api('/swarm/stop',{method:'POST'});
+  setTimeout(()=>{loadAgents();loadBots();},1000);
+}
+
+// ══ BOTS PAGE ══════════════════════════════════════════════
+async function loadBots(){
+  const d=await api('/agents'),el=document.getElementById('bots-grid');
+  if(!d.ok||!d.raw){el.innerHTML='<div class="empty" style="grid-column:1/-1">No agents. Spawn or dispatch to create some.</div>';document.getElementById('bot-count').textContent='';return;}
+  const lines=d.raw.split('\n').filter(l=>l.trim()&&!l.startsWith('─')&&!l.startsWith('Name'));
+  const agents=lines.map(l=>{const p=l.trim().split(/\s{2,}/);return{name:p[0],type:p[1]||'agent',status:p[2]||'idle',id:p[3]||p[0]};}).filter(a=>a.name&&a.name!=='Name');
+  document.getElementById('bot-count').textContent=agents.length+' agent'+(agents.length!==1?'s':'');
+  el.innerHTML=agents.length?agents.map(a=>`
+    <div class="bot-card">
+      <div class="bot-status"><span class="abadge ${a.status.includes('active')?'ba':a.status.includes('busy')?'bb':'bi'}">${esc(a.status)}</span></div>
+      <div class="bot-icon">${ICONS[a.type]||'🤖'}</div>
+      <div class="bot-name">${esc(a.name)}</div>
+      <div class="bot-type">${esc(a.type)}</div>
+      <div class="bot-actions">
+        <button class="btn-sm" onclick="viewAgentLogs('${esc(a.id)}')">📄 Logs</button>
+        <button class="btn-sm danger" onclick="deleteAgent('${esc(a.id)}','${esc(a.name)}')">🗑 Delete</button>
+      </div>
+    </div>`).join(''):'<div class="empty" style="grid-column:1/-1">No agents running.</div>';
+}
+
+async function deleteAgent(id,name){
+  if(!confirm(`Delete agent "${name}"? This will stop it immediately.`))return;
+  appendLog('🗑 Deleting agent: '+name,'lw');
+  const d=await api('/agents/'+id,{method:'DELETE'});
+  appendLog(d.ok?'✅ Agent deleted: '+name:'❌ '+d.error,d.ok?'ls':'le');
+  loadBots();loadAgents();
+}
+
+async function viewAgentLogs(id){
+  const d=await api('/agents/'+id+'/logs');
+  appendLog('📄 Logs for '+id+':\n'+(d.raw||'No logs'));
+  showTab('cc',document.querySelector('nav button'));
+}
+
+// ── AI STUDIO ─────────────────────────────────────────────
+async function generateMD(){
+  const prompt=document.getElementById('md-prompt').value.trim();
+  const type=document.getElementById('md-type').value;
+  if(!prompt)return;
+  const d=await api('/ai/generate-md',{method:'POST',body:{prompt,type}});
+  if(!d.ok)return;
+  generatedMD=d.markdown;
+  const prev=document.getElementById('md-preview');
+  prev.textContent=generatedMD;prev.style.display='block';
+  document.getElementById('md-actions').style.display='flex';
+}
+function copyMD(){navigator.clipboard.writeText(generatedMD);appendLog('📋 Copied to clipboard');}
+async function saveAsSkill(){
+  const name=prompt('Skill name:','my-skill');if(!name)return;
+  await api('/skills/upload',{method:'POST',body:{name,content:generatedMD}});
+  appendLog('💾 Saved as skill: '+name,'ls');loadSkillStore();
+}
+async function spawnFromMD(){
+  const name=prompt('Agent name:','ai-agent');const type=document.getElementById('md-type').value==='agent'?'coder':'researcher';
+  if(!name)return;
+  await api('/agents/create-from-md',{method:'POST',body:{name,type,markdown:generatedMD}});
+  appendLog('⚡ Agent spawned from MD: '+name,'ls');
+  loadBots();loadAgents();
+}
+
+// ── BOT MODALS ────────────────────────────────────────────
+function openSpawnModal(){document.getElementById('spawn-modal').classList.add('open');}
+async function spawnAgent(){
+  const type=document.getElementById('spawn-type').value,name=document.getElementById('spawn-name').value.trim()||undefined;
+  closeMod('spawn-modal');appendLog('⚡ Spawning '+type+'…','lc');
+  const d=await api('/agents/spawn',{method:'POST',body:{type,name}});
+  appendLog(d.ok?'✅ Spawned: '+d.agentName:'❌ '+d.error,d.ok?'ls':'le');
+  loadBots();loadAgents();
+}
+function openCreateBotModal(){document.getElementById('cb-md-preview').style.display='none';document.getElementById('create-bot-modal').classList.add('open');}
+async function previewBot(){
+  const p=document.getElementById('cb-prompt').value.trim(),t=document.getElementById('cb-type').value;
+  if(!p)return;const d=await api('/ai/generate-md',{method:'POST',body:{prompt:p,type:'agent'}});
+  if(d.ok){const prev=document.getElementById('cb-md-preview');prev.textContent=d.markdown;prev.style.display='block';}
+}
+async function createBot(){
+  const prompt=document.getElementById('cb-prompt').value.trim();
+  const type=document.getElementById('cb-type').value;
+  const name=document.getElementById('cb-name').value.trim()||'custom-bot';
+  if(!prompt)return;
+  const md=await api('/ai/generate-md',{method:'POST',body:{prompt,type:'agent'}});
+  const r=await api('/agents/create-from-md',{method:'POST',body:{name,type,markdown:md.markdown}});
+  closeMod('create-bot-modal');
+  appendLog(r.ok?'✅ Bot created: '+name:'❌ '+r.error,r.ok?'ls':'le');
+  loadBots();loadAgents();
+}
+
+// ══ SKILL STORE ════════════════════════════════════════════
+async function loadSkillStore(){
+  const d=await api('/skills/store'),el=document.getElementById('skill-grid');
+  allSkills=d||[];
+  renderSkills(allSkills);
+}
+async function loadInstalledSkills(){
+  const d=await api('/skills/local'),el=document.getElementById('skill-grid');
+  el.innerHTML=(d&&d.length)?d.map(s=>`
+    <div class="skill-card">
+      <div class="skill-name">${esc(s.name)}</div>
+      <div class="skill-desc">${esc(s.content.slice(0,120))}…</div>
+      <div class="skill-meta"><span>${s.filename}</span><span>${Math.round(s.size/1024*10)/10}KB</span></div>
+      <div class="skill-actions">
+        <button class="btn-sm danger" onclick="deleteSkill('${esc(s.id)}')">🗑 Remove</button>
+      </div>
+    </div>`).join(''):'<div class="empty" style="grid-column:1/-1">No skills installed yet.</div>';
+}
+function switchSkillTab(){
+  const t=document.getElementById('skill-tab').value;
+  if(t==='store')renderSkills(allSkills);else loadInstalledSkills();
+}
+function filterSkills(){
+  const q=document.getElementById('skill-search').value.toLowerCase();
+  renderSkills(allSkills.filter(s=>s.name.toLowerCase().includes(q)||s.description.toLowerCase().includes(q)||s.tags.some(t=>t.includes(q))));
+}
+function renderSkills(skills){
+  const el=document.getElementById('skill-grid');
+  el.innerHTML=skills.length?skills.map(s=>`
+    <div class="skill-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div class="skill-name">${esc(s.name)}</div>
+        ${s.installed?'<span class="installed-badge">✓ Installed</span>':''}
+      </div>
+      <div class="skill-desc">${esc(s.description)}</div>
+      <div class="skill-tags">${s.tags.map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div>
+      <div class="skill-meta"><span>by ${esc(s.author||'?')}</span><span>v${esc(s.version)}</span><span>⬇ ${(s.downloads||0).toLocaleString()}</span></div>
+      <div class="skill-actions">
+        ${s.installed
+          ?`<button class="btn-sm danger" onclick="deleteSkill('${esc(s.id)}')">🗑 Remove</button>`
+          :`<button class="btn-sm primary" onclick="installSkill('${esc(s.id)}')">⬇ Install</button>`}
+      </div>
+    </div>`).join(''):'<div class="empty" style="grid-column:1/-1">No skills found.</div>';
+}
+async function installSkill(id){
+  appendLog('📦 Installing skill: '+id,'lc');
+  const d=await api('/skills/install',{method:'POST',body:{id}});
+  appendLog(d.ok?'✅ Installed: '+id:'❌ '+d.error,d.ok?'ls':'le');
+  loadSkillStore();
+}
+async function deleteSkill(id){
+  if(!confirm('Remove skill "'+id+'"?'))return;
+  await api('/skills/'+id,{method:'DELETE'});
+  appendLog('🗑 Removed skill: '+id,'lw');
+  loadSkillStore();
+}
+function openUploadSkillModal(){document.getElementById('upload-skill-modal').classList.add('open');}
+async function uploadSkill(){
+  const name=document.getElementById('us-name').value.trim(),content=document.getElementById('us-content').value.trim();
+  if(!name||!content){alert('Name and content are required.');return;}
+  await api('/skills/upload',{method:'POST',body:{name,content}});
+  closeMod('upload-skill-modal');appendLog('⬆ Skill uploaded: '+name,'ls');loadSkillStore();
+}
+
+// ══ CALENDAR ══════════════════════════════════════════════
+async function loadCalendar(){
+  const d=await api('/calendar');
+  calEvents=d.events||[];
+  renderCalendar();renderEventList(calEvents);
+}
+function renderCalendar(){
+  const title=new Date(calYear,calMonth).toLocaleString('default',{month:'long',year:'numeric'});
+  document.getElementById('cal-title').textContent=title;
+  const first=new Date(calYear,calMonth,1).getDay();
+  const days=new Date(calYear,calMonth+1,0).getDate();
+  const prevDays=new Date(calYear,calMonth,0).getDate();
+  const today=new Date();
+  let html='';
+  for(let i=0;i<first;i++){const d=prevDays-first+1+i;html+=`<div class="cal-day other-month"><div class="cal-day-num">${d}</div></div>`;}
+  for(let d=1;d<=days;d++){
+    const dateStr=`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday=today.getFullYear()===calYear&&today.getMonth()===calMonth&&today.getDate()===d;
+    const dayEvents=calEvents.filter(e=>e.date===dateStr);
+    html+=`<div class="cal-day${isToday?' today':''}" onclick="showDayEvents('${dateStr}')">
+      <div class="cal-day-num">${d}</div>
+      ${dayEvents.slice(0,3).map(e=>`<div class="cal-event ce-${e.type}">${esc(e.title.slice(0,20))}</div>`).join('')}
+      ${dayEvents.length>3?`<div style="font-size:9px;color:var(--muted)">+${dayEvents.length-3} more</div>`:''}
+    </div>`;
+  }
+  const remaining=(7-((first+days)%7))%7;
+  for(let i=1;i<=remaining;i++)html+=`<div class="cal-day other-month"><div class="cal-day-num">${i}</div></div>`;
+  document.getElementById('cal-days').innerHTML=html;
+}
+function prevMonth(){calMonth--;if(calMonth<0){calMonth=11;calYear--;}renderCalendar();}
+function nextMonth(){calMonth++;if(calMonth>11){calMonth=0;calYear++;}renderCalendar();}
+function showDayEvents(date){
+  const evs=calEvents.filter(e=>e.date===date);
+  renderEventList(evs,date);
+}
+function renderEventList(evs,title=''){
+  const el=document.getElementById('cal-event-list');
+  el.innerHTML=(title?`<div style="font-size:11px;font-weight:700;color:var(--accent);margin-bottom:8px">📅 ${title}</div>`:'')+
+    (evs.length?evs.map(e=>`<div class="cal-event-item"><div class="cal-event-title">${esc(e.title)}</div><div class="cal-event-date">${e.date} ${e.time||''}</div><div class="abadge ${e.type==='completed'?'ba':'bi'}" style="font-size:9px;margin-top:3px">${e.type}</div></div>`).join(''):'<div class="empty">No events.</div>');
+}
+function openAddEventModal(){
+  document.getElementById('ev-date').value=new Date().toISOString().slice(0,10);
+  document.getElementById('add-event-modal').classList.add('open');
+}
+async function addEvent(){
+  const ev={title:document.getElementById('ev-title').value,date:document.getElementById('ev-date').value,time:document.getElementById('ev-time').value,type:document.getElementById('ev-type').value};
+  await api('/calendar/event',{method:'POST',body:ev});
+  closeMod('add-event-modal');loadCalendar();
+}
+
+// ══ SETTINGS ══════════════════════════════════════════════
+async function loadSettings(){
+  const d=await api('/settings');if(!d)return;
+  document.getElementById('s-anthropic').value=d.apiKeys?.anthropic||'';
+  document.getElementById('s-openai').value=d.apiKeys?.openai||'';
+  document.getElementById('s-github').value=d.apiKeys?.github||'';
+  document.getElementById('s-openrouter').value=d.apiKeys?.openrouter||'';
+  document.getElementById('s-discord-wh').value=d.social?.discord?.webhook||'';
+  document.getElementById('s-discord-bt').value=d.social?.discord?.botToken||'';
+  document.getElementById('s-tw-key').value=d.social?.twitter?.apiKey||'';
+  document.getElementById('s-tw-bearer').value=d.social?.twitter?.bearerToken||'';
+  document.getElementById('s-slack-wh').value=d.social?.slack?.webhook||'';
+  document.getElementById('s-slack-ch').value=d.social?.slack?.channel||'';
+  document.getElementById('s-claw-ver').value=d.openclaw?.targetVersion||'2026.3.22';
+  document.getElementById('s-port').value=d.general?.port||3847;
+  document.getElementById('s-tz').value=d.general?.timezone||'Asia/Kuala_Lumpur';
+  checkClaw();
+}
+async function saveApiKeys(){
+  await api('/settings',{method:'POST',body:{apiKeys:{anthropic:v('s-anthropic'),openai:v('s-openai'),github:v('s-github'),openrouter:v('s-openrouter')}}});
+  flash('API Keys saved ✅');
+}
+async function saveSocial(){
+  await api('/settings',{method:'POST',body:{social:{discord:{webhook:v('s-discord-wh'),botToken:v('s-discord-bt')},twitter:{apiKey:v('s-tw-key'),bearerToken:v('s-tw-bearer')},slack:{webhook:v('s-slack-wh'),channel:v('s-slack-ch')}}}});
+  flash('Social settings saved ✅');
+}
+async function saveClawSettings(){
+  await api('/settings',{method:'POST',body:{openclaw:{targetVersion:v('s-claw-ver'),autoUpdate:document.getElementById('claw-toggle').classList.contains('on')}}});
+  flash('OpenClaw settings saved ✅');
+}
+async function saveGeneral(){
+  await api('/settings',{method:'POST',body:{general:{timezone:v('s-tz'),port:parseInt(v('s-port'))}}});
+  flash('General settings saved ✅');
+}
+async function checkClaw(){
+  const d=await api('/openclaw/status');
+  const dot=document.getElementById('claw-dot'),ver=document.getElementById('claw-ver');
+  dot.className='dot'+(d.installed?' live':'');
+  ver.textContent=d.installed?'OpenClaw '+d.version+' installed':'OpenClaw not installed';
+}
+async function installClaw(){
+  appendLog('🦞 Installing OpenClaw…','lc');
+  const d=await api('/openclaw/install',{method:'POST'});
+  appendLog(d.ok?(d.skipped?'✅ Already installed: '+d.message:'✅ OpenClaw installed'):'❌ '+d.error,d.ok?'ls':'le');
+  checkClaw();
+}
+
+// ── UTILS ──────────────────────────────────────────────────
+function v(id){return document.getElementById(id)?.value||'';}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function closeMod(id){document.getElementById(id).classList.remove('open');}
+function flash(msg){appendLog(msg,'ls');}
+
+// ── REFRESH ALL ────────────────────────────────────────────
+function refreshAll(){loadAgents();loadTasks();loadMemory();loadFolders();}
+
+// ── INIT ──────────────────────────────────────────────────
+connectWS();refreshAll();setInterval(refreshAll,15000);
+loadCalendar();
+</script>
+</body>
+</html>

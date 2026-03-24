@@ -1,0 +1,99 @@
+{
+  "name": "ruflo-mission-control",
+  "version": "2.0.0",
+  "description": "Ruflo Mission Control — AI Agent orchestration desktop app",
+  "main": "main.js",
+  "type": "module",
+  "author": "Zen",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win --publish never",
+    "dist:all": "electron-builder --win --mac --linux --publish never"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "ws": "^8.16.0",
+    "cors": "^2.8.5",
+    "chokidar": "^3.6.0"
+  },
+  "devDependencies": {
+    "electron": "^29.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "com.zen.ruflo-mission-control",
+    "productName": "Ruflo Mission Control",
+    "copyright": "Copyright © 2026 Zen",
+    "directories": {
+      "output": "dist",
+      "buildResources": "assets"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "assets/**",
+      "../server.js",
+      "../dashboard.html",
+      "../package.json",
+      "../skills/**",
+      "../tasks/**",
+      "!../node_modules/.cache",
+      "!**/*.map"
+    ],
+    "extraResources": [
+      {
+        "from": "../",
+        "to": "app",
+        "filter": [
+          "server.js",
+          "dashboard.html",
+          "settings.json",
+          "skills/**",
+          "tasks/**"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "assets/icon.ico",
+      "requestedExecutionLevel": "asInvoker"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "allowElevation": true,
+      "installerIcon": "assets/icon.ico",
+      "uninstallerIcon": "assets/icon.ico",
+      "installerHeaderIcon": "assets/icon.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Ruflo Mission Control",
+      "include": "installer.nsh",
+      "deleteAppDataOnUninstall": false
+    },
+    "portable": {
+      "artifactName": "Ruflo-Mission-Control-Portable.exe"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "assets/icon.icns",
+      "category": "public.app-category.developer-tools"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "assets/icon.png",
+      "category": "Development"
+    },
+    "publish": null
+  }
+}

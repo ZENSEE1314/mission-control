@@ -1,0 +1,29 @@
+{
+  "apiKeys": {
+    "anthropic":   "",
+    "openai":      "",
+    "github":      "",
+    "openrouter":  "",
+    "gemini":      ""
+  },
+  "social": {
+    "discord":  { "webhook": "", "botToken": "", "channelId": "" },
+    "twitter":  { "apiKey": "", "apiSecret": "", "bearerToken": "", "accessToken": "" },
+    "linkedin": { "accessToken": "" },
+    "slack":    { "webhook": "", "botToken": "", "channel": "" }
+  },
+  "openclaw": {
+    "enabled":       true,
+    "targetVersion": "2026.3.22",
+    "autoUpdate":    true
+  },
+  "ruflo": {
+    "topology":  "hierarchical",
+    "maxAgents": 8
+  },
+  "general": {
+    "timezone":         "Asia/Kuala_Lumpur",
+    "port":             3847,
+    "taskOutputFolder": "./tasks"
+  }
+}

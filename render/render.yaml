@@ -1,0 +1,73 @@
+################################################################################
+# render.yaml — Ruflo Mission Control 24/7 cloud deployment on Render.com
+#
+# HOW TO DEPLOY IN 3 STEPS:
+#  1. Push the "Ruflo Mission Control" folder to a GitHub repo
+#  2. Go to https://dashboard.render.com → New → Blueprint
+#  3. Connect your GitHub repo — Render reads this file and auto-deploys
+################################################################################
+
+services:
+
+  # ── Main Web Service (dashboard + API, runs 24/7) ─────────────────────────
+  - type: web
+    name: ruflo-mission-control
+    runtime: node
+    plan: starter          # $7/month — no spin-down, always live
+    # plan: free           # Free tier — spins down after 15min inactivity
+    region: singapore      # Closest to Malaysia (MYT UTC+8)
+    branch: main
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: "10000"          # Render assigns this automatically
+      - key: NODE_ENV
+        value: production
+      - key: ANTHROPIC_API_KEY
+        sync: false             # Set in Render dashboard → Environment tab
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: OPENCLAW_VERSION
+        value: "2026.3.22"
+      - key: TASKS_DIR
+        value: /opt/render/project/src/tasks
+      - key: SKILLS_DIR
+        value: /opt/render/project/src/skills
+
+  # ── Daily OpenClaw update cron (keeps openclaw current) ──────────────────
+  - type: cron
+    name: ruflo-openclaw-updater
+    runtime: node
+    plan: starter
+    schedule: "0 2 * * *"      # 2:00 AM UTC daily (10:00 AM MYT)
+    buildCommand: npm install
+    startCommand: node -e "
+      const {execSync}=require('child_process');
+      try{
+        const cur=execSync('npx openclaw --version').toString().trim();
+        const tgt=process.env.OPENCLAW_VERSION||'2026.3.22';
+        if(cur===tgt){console.log('OpenClaw '+tgt+' already current — skipping');}
+        else{execSync('npm install -g openclaw@'+tgt,{stdio:'inherit'});console.log('Updated to '+tgt);}
+      }catch(e){execSync('npm install -g openclaw@'+(process.env.OPENCLAW_VERSION||'2026.3.22'),{stdio:'inherit'});}
+    "
+    envVars:
+      - key: OPENCLAW_VERSION
+        value: "2026.3.22"
+
+################################################################################
+# AFTER DEPLOYING — set these in Render dashboard → Environment:
+#
+#   ANTHROPIC_API_KEY   = sk-ant-...
+#   OPENAI_API_KEY      = sk-...
+#   GITHUB_TOKEN        = ghp_...
+#   DISCORD_WEBHOOK     = https://discord.com/api/webhooks/...
+#   TWITTER_BEARER      = ...
+#   SLACK_WEBHOOK       = https://hooks.slack.com/services/...
+#
+# Your dashboard will be live at:
+#   https://ruflo-mission-control.onrender.com
+################################################################################
