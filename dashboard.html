@@ -501,7 +501,8 @@ nav button.active{color:var(--accent);border-bottom-color:var(--accent);}
 </div>
 
 <script>
-const API='http://localhost:3847/api', WS_URL='ws://localhost:3847';
+const _base=(window.location.hostname==='localhost'||window.location.hostname==='127.0.0.1')?'http://localhost:3847':window.location.origin;
+const API=_base+'/api', WS_URL=_base.replace(/^http/,'ws');
 let ws,calYear=new Date().getFullYear(),calMonth=new Date().getMonth(),calEvents=[],allSkills=[],generatedMD='';
 
 // ── WS ────────────────────────────────────────────────────
