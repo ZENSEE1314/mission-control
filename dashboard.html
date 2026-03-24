@@ -363,10 +363,7 @@ nav button.active{color:var(--accent);border-bottom-color:var(--accent);}
         </div>
         <button class="save-btn" onclick="saveApiKeys()">Save API Keys</button>
         <p style="margin-top:10px;font-size:11px;color:var(--muted);line-height:1.5">
-          💡 <strong>On Render:</strong> Keys saved here only last until the next restart.
-          For <strong>permanent</strong> storage go to your Render service → <em>Environment</em> tab and add:
-          <code>ANTHROPIC_API_KEY</code>, <code>OPENAI_API_KEY</code>, <code>GITHUB_TOKEN</code>.
-          The server reads those automatically on every start.
+          💡 <strong>Keys saved:</strong> Stored in your browser — remembered forever, no server needed.
         </p>
       </div>
     </div>
@@ -850,8 +847,11 @@ async function addEvent(){
 }
 
 // ══ SETTINGS ══════════════════════════════════════════════
-async function loadSettings(){
-  const d=await api('/settings');if(!d)return;
+// localStorage-first settings
+const LS_KEY='rmc_settings';
+function lsGet(){try{return JSON.parse(localStorage.getItem(LS_KEY)||'{}');}catch{return {};}}
+function lsSet(p){const c=lsGet();function dm(a,b){const o={...a};for(const[k,v]of Object.entries(b||{})){o[k]=(v&&typeof v==='object'&&!Array.isArray(v))?dm(a[k]||{},v):v;}return o;}localStorage.setItem(LS_KEY,JSON.stringify(dm(c,p)));}
+function fillSettings(d){
   document.getElementById('s-anthropic').value=d.apiKeys?.anthropic||'';
   document.getElementById('s-openai').value=d.apiKeys?.openai||'';
   document.getElementById('s-github').value=d.apiKeys?.github||'';
@@ -865,28 +865,18 @@ async function loadSettings(){
   document.getElementById('s-claw-ver').value=d.openclaw?.targetVersion||'2026.3.22';
   document.getElementById('s-port').value=d.general?.port||3847;
   document.getElementById('s-tz').value=d.general?.timezone||'Asia/Kuala_Lumpur';
+}
+async function loadSettings(){
+  fillSettings(lsGet());
+  const d=await api('/settings');
+  if(d&&!d.error){function dm(a,b){const o={...a};for(const[k,v]of Object.entries(b||{})){o[k]=(v&&typeof v==='object'&&!Array.isArray(v))?dm(a[k]||{},v):v;}return o;}const m=dm(lsGet(),d);lsSet(m);fillSettings(m);}
   checkClaw();
 }
-async function saveApiKeys(){
-  const d=await api('/settings',{method:'POST',body:{apiKeys:{anthropic:v('s-anthropic'),openai:v('s-openai'),github:v('s-github'),openrouter:v('s-openrouter')}}});
-  if(d&&d.ok) flash('API Keys saved ✅');
-  else flash('❌ Save failed — server not reachable. Set keys in Render Environment Variables for permanent storage.','le');
-}
-async function saveSocial(){
-  const d=await api('/settings',{method:'POST',body:{social:{discord:{webhook:v('s-discord-wh'),botToken:v('s-discord-bt')},twitter:{apiKey:v('s-tw-key'),bearerToken:v('s-tw-bearer')},slack:{webhook:v('s-slack-wh'),channel:v('s-slack-ch')}}}});
-  if(d&&d.ok) flash('Social settings saved ✅');
-  else flash('❌ Save failed — server not reachable.','le');
-}
-async function saveClawSettings(){
-  const d=await api('/settings',{method:'POST',body:{openclaw:{targetVersion:v('s-claw-ver'),autoUpdate:document.getElementById('claw-toggle').classList.contains('on')}}});
-  if(d&&d.ok) flash('OpenClaw settings saved ✅');
-  else flash('❌ Save failed — server not reachable.','le');
-}
-async function saveGeneral(){
-  const d=await api('/settings',{method:'POST',body:{general:{timezone:v('s-tz'),port:parseInt(v('s-port'))}}});
-  if(d&&d.ok) flash('General settings saved ✅');
-  else flash('❌ Save failed — server not reachable.','le');
-}
+function saveSection(patch,label){lsSet(patch);flash(label+' saved (remembered in this browser)');api('/settings',{method:'POST',body:patch});}
+function saveApiKeys(){saveSection({apiKeys:{anthropic:v('s-anthropic'),openai:v('s-openai'),github:v('s-github'),openrouter:v('s-openrouter')}},'API Keys');}
+function saveSocial(){saveSection({social:{discord:{webhook:v('s-discord-wh'),botToken:v('s-discord-bt')},twitter:{apiKey:v('s-tw-key'),bearerToken:v('s-tw-bearer')},slack:{webhook:v('s-slack-wh'),channel:v('s-slack-ch')}}},'Social settings');}
+function saveClawSettings(){saveSection({openclaw:{targetVersion:v('s-claw-ver'),autoUpdate:document.getElementById('claw-toggle').classList.contains('on')}},'OpenClaw settings');}
+function saveGeneral(){saveSection({general:{timezone:v('s-tz'),port:parseInt(v('s-port'))}},'General settings');}
 async function checkClaw(){
   const d=await api('/openclaw/status');
   const dot=document.getElementById('claw-dot'),ver=document.getElementById('claw-ver');
