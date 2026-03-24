@@ -45,12 +45,21 @@ const DEFAULT_SETTINGS = {
 };
 
 function loadSettings() {
+  let s;
   if (!fs.existsSync(SETTINGS_FILE)) {
-    fs.writeFileSync(SETTINGS_FILE, JSON.stringify(DEFAULT_SETTINGS, null, 2));
-    return { ...DEFAULT_SETTINGS };
+    s = { ...DEFAULT_SETTINGS };
+    fs.writeFileSync(SETTINGS_FILE, JSON.stringify(s, null, 2));
+  } else {
+    try { s = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8')); }
+    catch { s = { ...DEFAULT_SETTINGS }; }
   }
-  try { return JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8')); }
-  catch { return { ...DEFAULT_SETTINGS }; }
+  // Fall back to Render / process env vars when settings.json has no keys
+  if (!s.apiKeys) s.apiKeys = {};
+  if (!s.apiKeys.anthropic  && process.env.ANTHROPIC_API_KEY)  s.apiKeys.anthropic  = process.env.ANTHROPIC_API_KEY;
+  if (!s.apiKeys.openai     && process.env.OPENAI_API_KEY)     s.apiKeys.openai     = process.env.OPENAI_API_KEY;
+  if (!s.apiKeys.github     && process.env.GITHUB_TOKEN)       s.apiKeys.github     = process.env.GITHUB_TOKEN;
+  if (!s.apiKeys.openrouter && process.env.OPENROUTER_API_KEY) s.apiKeys.openrouter = process.env.OPENROUTER_API_KEY;
+  return s;
 }
 
 function saveSettings(data) {
