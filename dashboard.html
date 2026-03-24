@@ -362,6 +362,12 @@ nav button.active{color:var(--accent);border-bottom-color:var(--accent);}
           <div class="form-group"><label>OpenRouter API Key</label><input type="password" id="s-openrouter" placeholder="sk-or-…"/></div>
         </div>
         <button class="save-btn" onclick="saveApiKeys()">Save API Keys</button>
+        <p style="margin-top:10px;font-size:11px;color:var(--muted);line-height:1.5">
+          💡 <strong>On Render:</strong> Keys saved here only last until the next restart.
+          For <strong>permanent</strong> storage go to your Render service → <em>Environment</em> tab and add:
+          <code>ANTHROPIC_API_KEY</code>, <code>OPENAI_API_KEY</code>, <code>GITHUB_TOKEN</code>.
+          The server reads those automatically on every start.
+        </p>
       </div>
     </div>
 
@@ -862,20 +868,24 @@ async function loadSettings(){
   checkClaw();
 }
 async function saveApiKeys(){
-  await api('/settings',{method:'POST',body:{apiKeys:{anthropic:v('s-anthropic'),openai:v('s-openai'),github:v('s-github'),openrouter:v('s-openrouter')}}});
-  flash('API Keys saved ✅');
+  const d=await api('/settings',{method:'POST',body:{apiKeys:{anthropic:v('s-anthropic'),openai:v('s-openai'),github:v('s-github'),openrouter:v('s-openrouter')}}});
+  if(d&&d.ok) flash('API Keys saved ✅');
+  else flash('❌ Save failed — server not reachable. Set keys in Render Environment Variables for permanent storage.','le');
 }
 async function saveSocial(){
-  await api('/settings',{method:'POST',body:{social:{discord:{webhook:v('s-discord-wh'),botToken:v('s-discord-bt')},twitter:{apiKey:v('s-tw-key'),bearerToken:v('s-tw-bearer')},slack:{webhook:v('s-slack-wh'),channel:v('s-slack-ch')}}}});
-  flash('Social settings saved ✅');
+  const d=await api('/settings',{method:'POST',body:{social:{discord:{webhook:v('s-discord-wh'),botToken:v('s-discord-bt')},twitter:{apiKey:v('s-tw-key'),bearerToken:v('s-tw-bearer')},slack:{webhook:v('s-slack-wh'),channel:v('s-slack-ch')}}}});
+  if(d&&d.ok) flash('Social settings saved ✅');
+  else flash('❌ Save failed — server not reachable.','le');
 }
 async function saveClawSettings(){
-  await api('/settings',{method:'POST',body:{openclaw:{targetVersion:v('s-claw-ver'),autoUpdate:document.getElementById('claw-toggle').classList.contains('on')}}});
-  flash('OpenClaw settings saved ✅');
+  const d=await api('/settings',{method:'POST',body:{openclaw:{targetVersion:v('s-claw-ver'),autoUpdate:document.getElementById('claw-toggle').classList.contains('on')}}});
+  if(d&&d.ok) flash('OpenClaw settings saved ✅');
+  else flash('❌ Save failed — server not reachable.','le');
 }
 async function saveGeneral(){
-  await api('/settings',{method:'POST',body:{general:{timezone:v('s-tz'),port:parseInt(v('s-port'))}}});
-  flash('General settings saved ✅');
+  const d=await api('/settings',{method:'POST',body:{general:{timezone:v('s-tz'),port:parseInt(v('s-port'))}}});
+  if(d&&d.ok) flash('General settings saved ✅');
+  else flash('❌ Save failed — server not reachable.','le');
 }
 async function checkClaw(){
   const d=await api('/openclaw/status');
@@ -894,7 +904,7 @@ async function installClaw(){
 function v(id){return document.getElementById(id)?.value||'';}
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function closeMod(id){document.getElementById(id).classList.remove('open');}
-function flash(msg){appendLog(msg,'ls');}
+function flash(msg,cls='ls'){appendLog(msg,cls);}
 
 // ── REFRESH ALL ────────────────────────────────────────────
 function refreshAll(){loadAgents();loadTasks();loadMemory();loadFolders();}
