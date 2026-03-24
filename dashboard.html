@@ -204,6 +204,7 @@ nav button.active{color:var(--accent);border-bottom-color:var(--accent);}
   <div class="header-right">
     <span id="clock">--:--:--</span>
     <span style="display:flex;align-items:center;gap:5px"><span class="dot" id="dot"></span><span id="conn-txt">Connecting…</span></span>
+    <button class="btn-s" id="wake-btn" onclick="wakeServer()" style="font-size:11px;display:none">⚡ Wake Server</button>
     <button class="btn-s" onclick="refreshAll()" style="font-size:11px">⟳ Refresh</button>
   </div>
 </header>
@@ -554,10 +555,30 @@ function appendLog(msg,cls='li'){
 }
 function clearLog(){document.getElementById('log-out').innerHTML='';}
 
-// ── API ───────────────────────────────────────────────────
+// ── SERVER STATE ───────────────────────────────
+let _srvOnline=null;
+function setSrv(online){
+  if(_srvOnline===online)return;_srvOnline=online;
+  document.getElementById('wake-btn').style.display=online?'none':'inline-flex';
+  appendLog(online?'🟢 Server online':'🔴 Server offline — click ⚡ Wake Server to reconnect.',online?'ls':'le');
+}
+async function wakeServer(){
+  const btn=document.getElementById('wake-btn');
+  btn.textContent='⏳ Waking…';btn.disabled=true;
+  appendLog('⚡ Waking server…','lc');
+  for(let i=0;i<12;i++){
+    try{const r=await fetch(API.replace('/api','')+'/health',{signal:AbortSignal.timeout(5000)});if(r.ok){setSrv(true);refreshAll();btn.textContent='⚡ Wake Server';btn.disabled=false;return;}}catch(e){}
+    await new Promise(r=>setTimeout(r,5000));
+  }
+  appendLog('❌ Server did not wake in 60s.','le');
+  btn.textContent='⚡ Wake Server';btn.disabled=false;
+}
+// ── API ───────────────────────────────────────
 async function api(path,opts={}){
-  try{const r=await fetch(API+path,{headers:{'Content-Type':'application/json'},...opts,body:opts.body?JSON.stringify(opts.body):undefined});return r.json();}
-  catch(e){appendLog('API error '+path+': '+e.message,'le');return{ok:false,error:e.message};}
+  try{
+    const r=await fetch(API+path,{headers:{'Content-Type':'application/json'},...opts,body:opts.body?JSON.stringify(opts.body):undefined,signal:AbortSignal.timeout(8000)});
+    const d=await r.json();setSrv(true);return d;
+  }catch(e){setSrv(false);return{ok:false,error:e.message};}
 }
 
 // ── AGENTS (cc) ───────────────────────────────────────────
@@ -896,9 +917,8 @@ function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').repl
 function closeMod(id){document.getElementById(id).classList.remove('open');}
 function flash(msg,cls='ls'){appendLog(msg,cls);}
 
-// ── REFRESH ALL ────────────────────────────────────────────
-function refreshAll(){loadAgents();loadTasks();loadMemory();loadFolders();}
-
+// ── REFRESH ALL ────────────────────────────────
+function refreshAll(){if(_srvOnline===false)return;loadAgents();loadTasks();loadMemory();loadFolders();}
 // ── INIT ──────────────────────────────────────────────────
 connectWS();refreshAll();setInterval(refreshAll,15000);
 loadCalendar();
